@@ -1,8 +1,8 @@
 package com.naman;
-//importing required packages 
+
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener; //package to implement event response
-import java.sql.Connection; //package to implement swing gui
+import java.awt.event.ActionListener;
+import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -13,8 +13,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JRadioButton;
+import javax.swing.Timer;
 
-// Custom Exceptions
 class DatabaseConnectionException extends Exception {
     public DatabaseConnectionException(String message) {
         super(message);
@@ -33,489 +33,339 @@ class InvalidAnswerException extends Exception {
     }
 }
 
-
-class OnlineTest extends JFrame implements ActionListener  
-{  
-    JLabel l;  //for setting question text
-    JRadioButton jb[]=new JRadioButton[5]; //for options of the question  
-    JButton b1,b2,b3;  //for start/next, previous and result buttons
-    ButtonGroup bg;  
-    int count=0,attempted=0,current=-1,x=1,y=1,now=0; 
-    long StartTime, EndTime,seconds,minutes,flag=0;; 
+class OnlineTest extends JFrame implements ActionListener {
+    JLabel timerLabel, questionLabel; // Separate labels for timer and questions
+    JRadioButton jb[] = new JRadioButton[5];
+    JButton b1, b2, b3;
+    ButtonGroup bg;
+    int count = 0, attempted = 0, current = -1;
+    long StartTime, EndTime, seconds, minutes, flag = 0;
     int a;
-    OnlineTest(String s)  
-    {  
-        super(s);  
-        l=new JLabel();  
-        add(l);  
-        bg=new ButtonGroup();  
-        for(int i=0;i<5;i++)  
-        {  
-            jb[i]=new JRadioButton();     
-            add(jb[i]);  
-            bg.add(jb[i]);  
+    Timer timer;
+    int timeRemaining = 300; // 5 minutes in seconds
+
+    OnlineTest(String s) {
+        super(s);
+        timerLabel = new JLabel();
+        questionLabel = new JLabel();
+        add(timerLabel);
+        add(questionLabel);
+        bg = new ButtonGroup();
+        for (int i = 0; i < 5; i++) {
+            jb[i] = new JRadioButton();
+            add(jb[i]);
+            bg.add(jb[i]);
         }
-        b1=new JButton("Start");   //Setting text of first button
-        b1.addActionListener(this); //Added event listener, i.e., action to be taken on being clicked
-        add(b1); //added start button
-        welcome(); //displays welcome message
-        b2=new JButton("Previous"); //Setting text of second button
-        b3=new JButton("Result"); //Setting text of third button
-        b2.addActionListener(this); 
-        b3.addActionListener(this);  
-        add(b2);add(b3);
-        // added previous and result buttons
-        l.setBounds(30,40,450,20);  //setting dimensions of question area
-        if(current !=-1)
-        {   
-            jb[0].setBounds(50,80,100,20);  //setting dimensions and coordinates of radio button group
-            jb[1].setBounds(50,110,100,20);  
-            jb[2].setBounds(50,140,100,20);  
-            jb[3].setBounds(50,170,100,20);  
+        b1 = new JButton("Start");
+        b1.addActionListener(this);
+        add(b1);
+        welcome();
+        b2 = new JButton("Previous");
+        b3 = new JButton("Result");
+        b2.addActionListener(this);
+        b3.addActionListener(this);
+        add(b2);
+        add(b3);
+
+        // Position the labels
+        timerLabel.setBounds(30, 10, 450, 20); // Timer label at the top
+        questionLabel.setBounds(30, 40, 550, 20); // Question label below the timer
+
+        if (current != -1) {
+            jb[0].setBounds(50, 80, 450, 20);
+            jb[1].setBounds(50, 110, 450, 20);
+            jb[2].setBounds(50, 140, 450, 20);
+            jb[3].setBounds(50, 170, 450, 20);
         }
-        b1.setBounds(100,240,100,30);  //setting dimensions and coordinates of start/next button
-        b2.setBounds(270,240,100,30);  //setting dimensions and coordinates of previous button
-        b3.setBounds(400,240,100,30);  //setting dimensions and coordinates of result button
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  
-        setLayout(null);  
-        setLocation(250,100);  
-        setVisible(true);  
-        setSize(600,350);  
-    }  
-    public void actionPerformed(ActionEvent e)  
-    {  
-        try
-        {
-            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306","root","Naman2006yo"); //connecting to database 'qa'
-            Statement stmt = con.createStatement();
-            if(e.getSource()==b1 && current ==9 ) //if all 10 questions have been displayed and user clicks on next, i.e., no more questions are available to be displayed
-            {
-                adduserans(); //adding user's response to the 10th question
-                JOptionPane.showMessageDialog(this,"No more questions. Please go back to previous question or end test and see result.\n");   
-            }
-            else if(e.getSource()==b1)  //if user clicks on start/next and there are more questions available to be displayed
-            {  
-                if(current == -1) //if user hasn't started test yet, i.e., she/he clicks on "start" button
-                {
-                    StartTime = System.currentTimeMillis(); //stores time when user starts test
-                    b1.setText("Next"); //setting text of b1 button to "next"
+        b1.setBounds(100, 240, 100, 30);
+        b2.setBounds(270, 240, 100, 30);
+        b3.setBounds(400, 240, 100, 30);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+        setLocation(250, 100);
+        setVisible(true);
+        setSize(600, 350);
+
+        // Initialize the timer
+        timer = new Timer(1000, new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                timeRemaining--;
+                updateTimerLabel();
+                if (timeRemaining <= 0) {
+                    timer.stop();
+                    endExam();
                 }
-                else
-                    adduserans(); //adding user's response to the question
-                current++; //incrementing counter of questions countered
-                setnext(); //setting next question
-            }  
-            else if(e.getSource()==b2 && current ==0 ) //if user clicks on previous button and there are no more questions available to be displayed
-            {
-                adduserans(); 
-                JOptionPane.showMessageDialog(this,"No more questions. Please go back to next question or end test and see result.\n");   
             }
-            else if(e.getSource()==b2)  //if user clicks on previous and there are more questions available to be displayed
-            {   
-                current--;  //decrementing counter of questions countered
+        });
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        try {
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa", "root", "Naman2006yo");
+            Statement stmt = con.createStatement();
+            if (e.getSource() == b1 && current == 9) {
                 adduserans();
-                setnext();   
-            }  
-            else if(e.getActionCommand().equals("Result"))  //if user clicks on result button
-            {  
-                EndTime = System.currentTimeMillis(); //stores time when user ends test
-                EndTime-=StartTime; //stores time taken by user to give test in milliseconds
-                EndTime/=1000; //stores time taken by user to give test in seconds
-                if(EndTime>=60) // if time can be expressed in minutes or hours
-                {
-                    seconds = EndTime%60; //calculating seconds
-                    EndTime/=60; //calculating minutes
-                    flag=1;
-                    if(EndTime>=60) //if time can be expressed in hours
-                    {
-                        flag=2;
-                        minutes=EndTime%60; //calculating minutes
-                        EndTime/=60; //calculating hours
+                JOptionPane.showMessageDialog(this, "No more questions. Please go back or see result.");
+            } else if (e.getSource() == b1) {
+                if (current == -1) {
+                    StartTime = System.currentTimeMillis();
+                    b1.setText("Next");
+                    timer.start(); // Start the timer when the exam begins
+                } else {
+                    adduserans();
+                }
+                current++;
+                setnext();
+            } else if (e.getSource() == b2 && current == 0) {
+                adduserans();
+                JOptionPane.showMessageDialog(this, "No previous questions.");
+            } else if (e.getSource() == b2) {
+                current--;
+                adduserans();
+                setnext();
+            } else if (e.getActionCommand().equals("Result")) {
+                EndTime = System.currentTimeMillis();
+                EndTime -= StartTime;
+                EndTime /= 1000;
+                if (EndTime >= 60) {
+                    seconds = EndTime % 60;
+                    EndTime /= 60;
+                    flag = 1;
+                    if (EndTime >= 60) {
+                        flag = 2;
+                        minutes = EndTime % 60;
+                        EndTime /= 60;
                     }
                 }
-                current++;   
-                check(); //checks user's responses against correct responses stored in database 
-                if(flag==0)
-                 a = JOptionPane.showConfirmDialog(this,"Attempted questions: "+attempted+" / 10\nTime taken: "+EndTime+" seconds\nYour Score: "+count+" / 10\nPercentage: "+(count*10)+" %\nDo you wish to see the answer key ?");  
-                else if(flag==1)
-                 a = JOptionPane.showConfirmDialog(this,"Attempted questions: "+attempted+" / 10\nTime taken: "+EndTime+" minutes "+seconds+" seconds\nYour Score: "+count+" / 10\nPercentage: "+(count*10)+" %\nDo you wish to see the answer key ?");     
-                else
-                 a = JOptionPane.showConfirmDialog(this,"Attempted questions: "+attempted+" / 10\nTime taken: "+EndTime+" hours "+minutes+" minutes "+seconds+" seconds\nYour Score: "+count+" / 10\nPercentage: "+(count*10)+" %\nDo you wish to see the answer key ?");     
-                //displays number of attempted questions, total score and percentage
-                if(a==JOptionPane.YES_OPTION) //checks if user wants to see answer key or not
-                    showAnswerKey();
-                else
-                {
-                    stmt.executeUpdate("delete from ua");
-                    stmt.executeUpdate("delete from stuua");
-                    stmt.executeUpdate("delete from stuqao");
-                    stmt.executeUpdate("delete from qao");
-                    System.exit(0);  //closes interface and exits
+                current++;
+                check();
+                String timeMsg;
+                if (flag == 0) {
+                    timeMsg = "Time taken: " + EndTime + " seconds";
+                } else if (flag == 1) {
+                    timeMsg = "Time taken: " + EndTime + " minutes " + seconds + " seconds";
+                } else {
+                    timeMsg = "Time taken: " + EndTime + " hours " + minutes + " minutes " + seconds + " seconds";
                 }
-            } 
+                a = JOptionPane.showConfirmDialog(this, "Attempted: " + attempted + "/10\n" + timeMsg +
+                        "\nScore: " + count + "/10\nPercentage: " + (count * 10) + "%\nView answer key?");
+                if (a == JOptionPane.YES_OPTION) {
+                    showAnswerKey();
+                } else {
+                    stmt.executeUpdate("DELETE FROM stuua");
+                    stmt.executeUpdate("DELETE FROM stuqao");
+                    System.exit(0);
+                }
+            }
+            con.close();
+        } catch (java.sql.SQLException ex) {
+            try {
+                throw new DatabaseConnectionException("Failed to connect to the database: " + ex.getMessage());
+            } catch (DatabaseConnectionException ex1) {
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
         }
-        catch(Exception ex)
-        {
-            System.out.println("actionPerformed"+ex);
-        } 
-    }  
-    void welcome() //Welcome Message 
-    {
-        l.setText("Welcome to the online examination. Click button to start with the test.") ;
     }
-    void setnext() //function to set next/previous question 
-    {  
-        jb[4].setSelected(true);  
-        try
-        {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql:///qa","root","Naman2006yo"); //connecting to database 'qa'
+
+    void updateTimerLabel() {
+        int minutes = timeRemaining / 60;
+        int seconds = timeRemaining % 60;
+        timerLabel.setText(String.format("Time Remaining: %02d:%02d", minutes, seconds)); // Update timerLabel
+    }
+
+    void endExam() {
+        JOptionPane.showMessageDialog(this, "Time's up! The exam has ended.");
+        EndTime = System.currentTimeMillis();
+        EndTime -= StartTime;
+        EndTime /= 1000;
+        check();
+        JOptionPane.showMessageDialog(this, "Score: " + count + "/10\nPercentage: " + (count * 10) + "%");
+        System.exit(0);
+    }
+
+    void welcome() {
+        timerLabel.setText("Welcome to the Online Exam. Click Start to begin."); // Update timerLabel
+    }
+
+    void setnext() throws DatabaseConnectionException {
+        jb[4].setSelected(true);
+        try {
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa", "root", "Naman2006yo");
             Statement stmt = con.createStatement();
-            if(current==0)  
-            {    
-                String sql="select * from stuqao where qno=1"; //selects all fields of table 'stuqao' with value of field qno equal to 1
-                ResultSet rs = stmt.executeQuery(sql); //executing mysql query 
-                rs.next(); //pointing to next row of result set 
-                String s1 =rs.getString("question"); //getting value stored in result set under field "question"
-                String s2 =rs.getString("option1"); //getting value stored in result set under field "option1"
-                String s3 =rs.getString("option2"); //getting value stored in result set under field "option2"
-                String s4 =rs.getString("option3"); //getting value stored in result set under field "option3"
-                String s5 =rs.getString("option4"); //getting value stored in result set under field "option4"
-                l.setText("Q.1 "+s1); //setting question
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  //setting options
-            }  
-            if(current==1)  
-            {  
-                String sql="select * from stuqao where qno=2";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("question");
-                String s2 =rs.getString("option1");
-                String s3 =rs.getString("option2");
-                String s4 =rs.getString("option3");
-                String s5 =rs.getString("option4");
-                l.setText("Q.2 "+s1);  
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  
-            }  
-            if(current==2)  
-            {  
-                String sql="select * from stuqao where qno=3";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("question");
-                String s2 =rs.getString("option1");
-                String s3 =rs.getString("option2");
-                String s4 =rs.getString("option3");
-                String s5 =rs.getString("option4");
-                l.setText("Q.3 "+s1);  
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  
-            }  
-            if(current==3)  
-            {  
-                String sql="select * from stuqao where qno=4";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("question");
-                String s2 =rs.getString("option1");
-                String s3 =rs.getString("option2");
-                String s4 =rs.getString("option3");
-                String s5 =rs.getString("option4");
-                l.setText("Q.4 "+s1);  
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  
-            }  
-            if(current==4)  
-            {  
-                String sql="select * from stuqao where qno=5";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("question");
-                String s2 =rs.getString("option1");
-                String s3 =rs.getString("option2");
-                String s4 =rs.getString("option3");
-                String s5 =rs.getString("option4");
-                l.setText("Q.5 "+s1);  
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  
-            }  
-            if(current==5)  
-            {  
-                String sql="select * from stuqao where qno=6";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("question");
-                String s2 =rs.getString("option1");
-                String s3 =rs.getString("option2");
-                String s4 =rs.getString("option3");
-                String s5 =rs.getString("option4");
-                l.setText("Q.6 "+s1);  
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  
-            }  
-            if(current==6)  
-            {  
-                String sql="select * from stuqao where qno=7";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("question");
-                String s2 =rs.getString("option1");
-                String s3 =rs.getString("option2");
-                String s4 =rs.getString("option3");
-                String s5 =rs.getString("option4");
-                l.setText("Q.7 "+s1);  
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  
-            }  
-            if(current==7)  
-            {  
-                String sql="select * from stuqao where qno=8";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("question");
-                String s2 =rs.getString("option1");
-                String s3 =rs.getString("option2");
-                String s4 =rs.getString("option3");
-                String s5 =rs.getString("option4");
-                l.setText("Q.8 "+s1);  
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  
-            }  
-            if(current==8)  
-            {  
-                String sql="select * from stuqao where qno=9";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("question");
-                String s2 =rs.getString("option1");
-                String s3 =rs.getString("option2");
-                String s4 =rs.getString("option3");
-                String s5 =rs.getString("option4");
-                l.setText("Q.9 "+s1);  
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  
-            }  
-            if(current==9)  
-            {  
-                String sql="select * from stuqao where qno=10";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("question");
-                String s2 =rs.getString("option1");
-                String s3 =rs.getString("option2");
-                String s4 =rs.getString("option3");
-                String s5 =rs.getString("option4");
-                l.setText("Q.10 "+s1);  
-                jb[0].setText(s2);jb[1].setText(s3);jb[2].setText(s4);jb[3].setText(s5);  
-            }  
-            l.setBounds(30,40,450,20);  
-            for(int i=0,j=0;i<=90;i+=30,j++)  
-                jb[j].setBounds(50,80+i,200,20);  
-        }   
-        catch(Exception e)
-        {
-            System.out.println("setnext\n"+e);
+            String sql = "SELECT * FROM stuqao WHERE qno=" + (current + 1);
+            ResultSet rs = stmt.executeQuery(sql);
+            if (rs.next()) {
+                questionLabel.setText("Q." + (current + 1) + " " + rs.getString("question")); // Update questionLabel
+                jb[0].setText(rs.getString("option1"));
+                jb[1].setText(rs.getString("option2"));
+                jb[2].setText(rs.getString("option3"));
+                jb[3].setText(rs.getString("option4"));
+            } else {
+                throw new QuestionNotFoundException("Question not found for question number: " + (current + 1));
+            }
+            for (int i = 0, y = 80; i < 4; i++, y += 30) {
+                jb[i].setBounds(50, y, 500, 20);
+            }
+            con.close();
+        } catch (java.sql.SQLException ex) {
+            throw new DatabaseConnectionException("Failed to connect to the database: " + ex.getMessage());
+        } catch (QuestionNotFoundException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error loading question: " + e.getMessage());
         }
-    }  
-    void adduserans() //function to connect to qa database and insert user's answers into ua table
-    {
-        try
-        {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa","root","Naman2006yo");
+    }
+
+    void adduserans() throws DatabaseConnectionException {
+        try {
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa", "root", "Naman2006yo");
             Statement stmt = con.createStatement();
-            for(int i=0;i<=3;i++)
-            {
-                if(jb[i].isSelected()) //if answer has been selected in radio button group
-                {
-                    String sql1 = "insert into stuua(qno,userans) values("+(current+1)+",'"+jb[i].getText()+"') on duplicate key update userans='"+jb[i].getText()+"'";
-                    //if user opts to change answer, she/he can do so because of the above command. 
-                    //This allows the table to accept overwriting of existing values
-                    stmt.executeUpdate(sql1);
-                    //con.close();
+            boolean answerSelected = false;
+            for (int i = 0; i < 4; i++) {
+                if (jb[i].isSelected()) {
+                    String sql = "UPDATE stuua SET userans='" + jb[i].getText() + "' WHERE qno=" + (current + 1);
+                    stmt.executeUpdate(sql);
+                    answerSelected = true;
                     break;
                 }
             }
-            
-        }
-        catch(Exception e)
-        {
-            System.out.println("adduserans\n"+e);
+            if (!answerSelected) {
+                throw new InvalidAnswerException("No answer selected for question number: " + (current + 1));
+            }
+            con.close();
+        } catch (java.sql.SQLException ex) {
+            throw new DatabaseConnectionException("Failed to connect to the database: " + ex.getMessage());
+        } catch (InvalidAnswerException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage());
+        } catch (Exception e) {
+            System.out.println("adduserans: " + e);
         }
     }
-    void check()  //function to check number of correct answers 
-    {  
-        try
-        {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql:///qa","root","Naman2006yo");
+
+    void check() {
+        try {
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa", "root", "Naman2006yo");
             Statement stmt = con.createStatement();
-            for(int i=1;i<=10;i++)
-            {
-                String sql="select userans, correctans from stuua where qno="+i+"";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("userans");
-                String s2 =rs.getString("correctans");
-                if(!(s1.equals(""))) //checks if the user has attempted the question or not 
+            ResultSet rs = stmt.executeQuery("SELECT * FROM stuua");
+            while (rs.next()) {
+                String userAns = rs.getString("userans");
+                String correctAns = rs.getString("correctans");
+                if (userAns != null && !userAns.isEmpty()) {
                     attempted++;
-                if(s1.equals(s2)) //checks if user's answer matches correct answer
-                 count++;
+                    if (userAns.equals(correctAns)) {
+                        count++;
+                    }
+                }
             }
-        }
-        catch(Exception e)
-        {
-            System.out.println("check\n"+e);
+            con.close();
+        } catch (Exception e) {
+            System.out.println("check: " + e);
         }
     }
-    void showAnswerKey() //function to print answer key if requested for
-    {
-        try
-        {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql:///qa","root","Naman2006yo");
+
+    void showAnswerKey() {
+        try {
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa", "root", "Naman2006yo");
             Statement stmt = con.createStatement();
-            String answerkey="";
-            answerkey+="Answer Key:\nQ.No.  Your answer  Correct Answer\n";
-            for(int i=1;i<=10;i++)
-            {
-                String sql="select userans, correctans from stuua where qno="+i+"";
-                ResultSet rs = stmt.executeQuery(sql);
-                rs.next();
-                String s1 =rs.getString("userans"); //stores user's answer
-                if(s1.equals("")) //if user hasn't attempted this question, we assign NA to variable
-                    s1="NA";
-                String s2 =rs.getString("correctans"); //stores correct answer
-                if(i<=9)
-                 answerkey+="   "+(char)(i+48)+"         "+s1+"         "+s2+"\n";
-                else //0-9 is 48-57 in ascii 
-                 answerkey+="  10"+"         "+s1+"         "+s2+"\n";
+            StringBuilder answerKey = new StringBuilder("Answer Key:\nQ.No\tYour Answer\tCorrect Answer\n");
+            ResultSet rs = stmt.executeQuery("SELECT * FROM stuua ORDER BY qno");
+            while (rs.next()) {
+                int qno = rs.getInt("qno");
+                String userAns = rs.getString("userans");
+                String correctAns = rs.getString("correctans");
+                answerKey.append(qno).append("\t")
+                        .append(userAns.isEmpty() ? "Unanswered" : userAns).append("\t\t")
+                        .append(correctAns).append("\n");
             }
-            JOptionPane.showMessageDialog(this,answerkey); //prints answer key
-            stmt.executeUpdate("delete from ua");
-            stmt.executeUpdate("delete from stuua");
-            stmt.executeUpdate("delete from stuqao");
-            stmt.executeUpdate("delete from qao");
+            JOptionPane.showMessageDialog(this, answerKey.toString());
+            stmt.executeUpdate("DELETE FROM stuua");
+            stmt.executeUpdate("DELETE FROM stuqao");
             System.exit(0);
             con.close();
-        }
-        catch(Exception e)
-        {
-            System.out.println("showAnswerKey\n"+e);
+        } catch (Exception e) {
+            System.out.println("showAnswerKey: " + e);
         }
     }
-    static void qaoDBcon() //function to connect to qa database and insert question and options into qao table
-    {
-        try
-        {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql:///qa","root","Naman2006yo");
-            Statement stmt = con.createStatement();
-            stmt.executeUpdate("insert into qao values(1,'What language are we using ?','C','C++','Java','Python')");
-            stmt.executeUpdate("insert into qao values(2,'What language are we using ?','C','C++','Java','Python')");
-            stmt.executeUpdate("insert into qao values(3,'What language are we using ?','C','C++','Java','Python')");
-            stmt.executeUpdate("insert into qao values(4,'What language are we using ?','C','C++','Java','Python')");
-            stmt.executeUpdate("insert into qao values(5,'What language are we using ?','C','C++','Java','Python')");
-            stmt.executeUpdate("insert into qao values(6,'What language are we using ?','C','C++','Java','Python')");
-            stmt.executeUpdate("insert into qao values(7,'What language are we using ?','C','C++','Java','Python')");
-            stmt.executeUpdate("insert into qao values(8,'What language are we using ?','C','C++','Java','Python')");
-            stmt.executeUpdate("insert into qao values(9,'What language are we using ?','C','C++','Java','Python')");
-            stmt.executeUpdate("insert into qao values(10,'What language are we using ?','C','C++','Java','Python')");
-            con.close();
-        }
-        catch(Exception e)
-        {
-            System.out.println("qaoDBcon\n"+e);
-        }
-    }
-    static void uaDBcon() //function to connect to qa database and insert correct answers of all questions into ua table
-    {
-        try
-        {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql:///qa","root","Naman2006yo");
-            Statement stmt = con.createStatement();
-            stmt.executeUpdate("insert into ua values(1,'','J1ava')");
-            stmt.executeUpdate("insert into ua values(2,'','J2ava')");
-            stmt.executeUpdate("insert into ua values(3,'','J3ava')");
-            stmt.executeUpdate("insert into ua values(4,'','J4ava')");
-            stmt.executeUpdate("insert into ua values(5,'','J5ava')");
-            stmt.executeUpdate("insert into ua values(6,'','J6ava')");
-            stmt.executeUpdate("insert into ua values(7,'','J7ava')");
-            stmt.executeUpdate("insert into ua values(8,'','J8ava')");
-            stmt.executeUpdate("insert into ua values(9,'','J9ava')");
-            stmt.executeUpdate("insert into ua values(10,'','J10ava')");
-            stmt.executeUpdate("insert into ua values(11,'','J11ava')");
-            stmt.executeUpdate("insert into ua values(12,'','J12ava')");
-            stmt.executeUpdate("insert into ua values(13,'','J13ava')");
-            stmt.executeUpdate("insert into ua values(14,'','J14ava')");
-            stmt.executeUpdate("insert into ua values(15,'','J15ava')");
-            stmt.executeUpdate("insert into ua values(16,'','J16ava')");
-            stmt.executeUpdate("insert into ua values(17,'','J17ava')");
-            stmt.executeUpdate("insert into ua values(18,'','J18ava')");
-            stmt.executeUpdate("insert into ua values(19,'','J19ava')");
-            stmt.executeUpdate("insert into ua values(20,'','J20ava')");
-            con.close();
-        }
-        catch(Exception e)
-        {
-            System.out.println("uaDBcon\n"+e);
-        }
-    }
-    static void pickrandom()
-    /*function to pick 10 random questions from the qao table, store them in stuqao table and display to the user
-    this function also stores the correct answers of these 10 picked questions into the table stuua
-    */
-    {
-        try
-        {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa","root","Naman2006yo");
-            Statement stmt = con.createStatement();
-            int a[]=new int[21];
-            int c=0;
-            int p;
-            for(int i=0;i<=20;i++)
-                a[i]=0;
-            while(c!=10)
-            {
-                p=1+(int)(Math.random()*20); //generating random integers in range [1,20]
-                if(a[p]==0)
-                {
-                    a[p]=1; //marking the 10 randomly selected integers
-                    c++; //counting number of random indexes marked
-                }
-            }
-            c=0;
-            for(int i=1;i<=20;i++)
-            {
-                if(a[i]==1) //checks if integer 'i' has been picked by code as a random integer 
-                {
-                    c++;
-                    String sql="select * from qao where qno="+i+"";
-                    ResultSet randomrs = stmt.executeQuery(sql);
-                    randomrs.next();
-                    String s1 =randomrs.getString("question");
-                    String s2 =randomrs.getString("option1");
-                    String s3 =randomrs.getString("option2");
-                    String s4 =randomrs.getString("option3");
-                    String s5 =randomrs.getString("option4");
-                    stmt.executeUpdate("insert into stuqao values("+c+",'"+s1+"','"+s2+"','"+s3+"','"+s4+"','"+s5+"')");
-                    randomrs.close();
-                    sql="select * from ua where qno="+i+"";
-                    randomrs = stmt.executeQuery(sql);
-                    randomrs.next();
-                    s1 =randomrs.getString("correctans");
-                    stmt.executeUpdate("insert into stuua values("+c+",'','"+s1+"')");
-                    randomrs.close();
 
+    static void initializeDatabase() {
+        try {
+            Class.forName("com.mysql.jdbc.Driver");
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/", "root", "Naman2006yo");
+            Statement stmt = con.createStatement();
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS qa");
+            con.close();
+
+            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa", "root", "Naman2006yo");
+            stmt = con.createStatement();
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS qao (qno INT PRIMARY KEY, question VARCHAR(255), option1 VARCHAR(255), option2 VARCHAR(255), option3 VARCHAR(255), option4 VARCHAR(255))");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ua (qno INT PRIMARY KEY, userans VARCHAR(255), correctans VARCHAR(255))");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS stuqao (qno INT PRIMARY KEY, question VARCHAR(255), option1 VARCHAR(255), option2 VARCHAR(255), option3 VARCHAR(255), option4 VARCHAR(255))");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS stuua (qno INT PRIMARY KEY, userans VARCHAR(255), correctans VARCHAR(255))");
+            con.close();
+        } catch (Exception e) {
+            System.out.println("initializeDatabase: " + e);
+        }
+    }
+
+    static void populateQuestions() {
+        try {
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa", "root", "Naman2006yo");
+            Statement stmt = con.createStatement();
+            stmt.executeUpdate("INSERT IGNORE INTO qao VALUES " +
+                    "(1, 'What language is this exam written in?', 'C', 'C++', 'Java', 'Python'), " +
+                    "(2, 'Which keyword defines a class in Java?', 'class', 'interface', 'object', 'type'), " +
+                    "(3, 'Parent class of all Java classes?', 'Object', 'Main', 'Super', 'Parent'), " +
+                    "(4, 'Java loop structure?', 'for', 'loop', 'repeat', 'cycle'), " +
+                    "(5, 'Default value of int?', '0', '1', 'null', 'undefined'), " +
+                    "(6, 'Data type for true/false?', 'boolean', 'int', 'Boolean', 'bool'), " +
+                    "(7, 'Size of char in Java?', '2 bytes', '1 byte', '4 bytes', '8 bytes'), " +
+                    "(8, 'Collection allowing duplicates?', 'List', 'Set', 'Map', 'Queue'), " +
+                    "(9, 'What is Java?', 'Programming language', 'Coffee', 'Island', 'All'), " +
+                    "(10, 'Method called on start?', 'main', 'init', 'start', 'run')");
+            stmt.executeUpdate("INSERT IGNORE INTO ua VALUES " +
+                    "(1, '', 'Java'), (2, '', 'class'), (3, '', 'Object'), (4, '', 'for'), " +
+                    "(5, '', '0'), (6, '', 'boolean'), (7, '', '2 bytes'), (8, '', 'List'), " +
+                    "(9, '', 'All'), (10, '', 'main')");
+            con.close();
+        } catch (Exception e) {
+            System.out.println("populateQuestions: " + e);
+        }
+    }
+
+    static void pickRandomQuestions() {
+        try {
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa", "root", "Naman2006yo");
+            Statement stmt = con.createStatement();
+            stmt.executeUpdate("DELETE FROM stuqao");
+            stmt.executeUpdate("DELETE FROM stuua");
+            int[] selected = new int[11];
+            int count = 0;
+            while (count < 10) {
+                int rand = 1 + (int) (Math.random() * 10);
+                if (selected[rand] == 0) {
+                    selected[rand] = 1;
+                    count++;
+                }
+            }
+            count = 0;
+            for (int i = 1; i <= 10; i++) {
+                if (selected[i] == 1) {
+                    count++;
+                    stmt.executeUpdate("INSERT INTO stuqao SELECT " + count + ", question, option1, option2, option3, option4 FROM qao WHERE qno=" + i);
+                    stmt.executeUpdate("INSERT INTO stuua SELECT " + count + ", '', correctans FROM ua WHERE qno=" + i);
                 }
             }
             con.close();
-        }
-        catch(Exception e)
-        {
-            System.out.println("pickrandom\n"+e);
+        } catch (Exception e) {
+            System.out.println("pickRandomQuestions: " + e);
         }
     }
-    public static void main(String s[])
-    {  
-        qaoDBcon(); //creating question-option database
-        uaDBcon(); //creating user answer-correct answer database
-        pickrandom(); //creating question-option database that will be asked to student
-        new OnlineTest("Online Exam System");  // creating object 
-    }  
-} 
+
+    public static void main(String s[]) {
+        initializeDatabase();
+        populateQuestions();
+        pickRandomQuestions();
+        new OnlineTest("Online Exam System");
+    }
+}
