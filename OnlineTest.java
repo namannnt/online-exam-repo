@@ -299,6 +299,7 @@ class OnlineTest extends JFrame implements ActionListener
                     break;
                 }
             }
+            
         }
         catch(Exception e)
         {
@@ -442,7 +443,7 @@ class OnlineTest extends JFrame implements ActionListener
         try
         {
             Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql:///qa","root","shivhek25@mysql");
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/qa","root","Naman2006yo");
             Statement stmt = con.createStatement();
             int a[]=new int[21];
             int c=0;
