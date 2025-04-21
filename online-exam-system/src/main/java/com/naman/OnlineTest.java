@@ -1,7 +1,18 @@
+package com.naman;
 //importing required packages 
-import java.awt.event.*;
-import java.sql.*; //package to implement event response 
-import javax.swing.*; //package to implement swing gui
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener; //package to implement event response
+import java.sql.Connection; //package to implement swing gui
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
+import javax.swing.ButtonGroup;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JRadioButton;
 
 class OnlineTest extends JFrame implements ActionListener  
 {  
@@ -55,8 +66,7 @@ class OnlineTest extends JFrame implements ActionListener
     {  
         try
         {
-            Class.forName("com.mysql.jdbc.Driver");
-            Connection con = DriverManager.getConnection("jdbc:mysql:///qa","root","shivhek25@mysql"); //connecting to database 'qa'
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306","root","Naman2006yo"); //connecting to database 'qa'
             Statement stmt = con.createStatement();
             if(e.getSource()==b1 && current ==9 ) //if all 10 questions have been displayed and user clicks on next, i.e., no more questions are available to be displayed
             {
